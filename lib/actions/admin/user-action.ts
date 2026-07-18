@@ -5,13 +5,41 @@ import { requireAdmin } from '@/lib/auth-util'
 import { prisma } from '@/lib/prisma'
 import { listUsersSchema, type ListUsersInput } from '@/lib/validations/user-validation'
 
-export const listUserAction = async (input: ListUsersInput) => {
+const userListSelect = {
+  id: true,
+  name: true,
+  email: true,
+  emailVerified: true,
+  image: true,
+  role: true,
+  banned: true,
+  banReason: true,
+  banExpires: true,
+  createdAt: true,
+} satisfies Prisma.UserSelect
+
+type SafeUser = Prisma.UserGetPayload<{ select: typeof userListSelect }>
+
+interface Pagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPrevPage: boolean
+}
+
+type ListUsersResult =
+  | { success: true; data: { users: SafeUser[]; pagination: Pagination } }
+  | { success: false; error: string }
+
+export const listUserAction = async (input: ListUsersInput): Promise<ListUsersResult> => {
   await requireAdmin()
 
   const parsed = listUsersSchema.safeParse(input)
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0].message }
+    return { success: false, error: parsed.error.issues[0].message }
   }
 
   const { page, limit, searchValue, sortBy, sortDirection } = parsed.data
@@ -21,40 +49,27 @@ export const listUserAction = async (input: ListUsersInput) => {
     const where: Prisma.UserWhereInput = searchValue
       ? {
           OR: [
-            {
-              name: {
-                contains: searchValue,
-                mode: 'insensitive',
-              },
-            },
-            {
-              email: {
-                contains: searchValue,
-                mode: 'insensitive',
-              },
-            },
+            { name: { contains: searchValue, mode: 'insensitive' } },
+            { email: { contains: searchValue, mode: 'insensitive' } },
           ],
         }
       : {}
 
-    const [users, total] = await prisma.$transaction([
+    const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
+        select: userListSelect,
         skip: offset,
         take: limit,
-        orderBy: {
-          [sortBy]: sortDirection,
-        },
+        orderBy: { [sortBy]: sortDirection },
       }),
-      prisma.user.count({
-        where,
-      }),
+      prisma.user.count({ where }),
     ])
 
-    const totalPages = Math.ceil(total / limit)
+    const totalPages = Math.max(1, Math.ceil(total / limit))
 
     return {
-      success: true as const,
+      success: true,
       data: {
         users,
         pagination: {
@@ -69,10 +84,6 @@ export const listUserAction = async (input: ListUsersInput) => {
     }
   } catch (error) {
     console.error('[listUsersAction]', error)
-
-    return {
-      success: false as const,
-      error: 'Gagal mengambil data user',
-    }
+    return { success: false, error: 'Gagal mengambil data user' }
   }
 }

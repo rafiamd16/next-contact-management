@@ -79,7 +79,7 @@ const SignInForm = () => {
       <form
         id='form-rhf-input'
         onSubmit={handleSubmit(onSubmit)}
-        className={`space-y-4 ${isPending || isPendingGoogle || isPendingGithub ? 'pointer-events-none' : ''}`}>
+        className={`space-y-7 ${isPending || isPendingGoogle || isPendingGithub ? 'pointer-events-none' : ''}`}>
         <FieldGroup>
           <Controller
             name='email'
