@@ -94,7 +94,7 @@ const SignUpForm = () => {
               <Field data-invalid={fieldState.invalid}>
                 <FieldLabel htmlFor='form-rhf-input-name'>Name</FieldLabel>
                 <div className='relative'>
-                  <FaIdCard className='absolute top-1/2 -translate-y-1/2 left-2.5' />
+                  <FaIdCard className='absolute top-1/2 -translate-y-1/2 left-2.5 text-muted-foreground' />
                   <Input
                     {...field}
                     id='form-rhf-input-name'
@@ -117,7 +117,7 @@ const SignUpForm = () => {
               <Field data-invalid={fieldState.invalid}>
                 <FieldLabel htmlFor='form-rhf-input-email'>Email</FieldLabel>
                 <div className='relative'>
-                  <IoMail className='absolute top-1/2 -translate-y-1/2 left-2.5' />
+                  <IoMail className='absolute top-1/2 -translate-y-1/2 left-2.5 text-muted-foreground' />
                   <Input
                     {...field}
                     id='form-rhf-input-email'
@@ -140,7 +140,7 @@ const SignUpForm = () => {
               <Field data-invalid={fieldState.invalid}>
                 <FieldLabel htmlFor='form-rhf-input-password'>Password</FieldLabel>
                 <div className='relative'>
-                  <IoLockClosed className='absolute top-1/2 -translate-y-1/2 left-2.5' />
+                  <IoLockClosed className='absolute top-1/2 -translate-y-1/2 left-2.5 text-muted-foreground' />
                   <Input
                     {...field}
                     type={showPassword ? 'text' : 'password'}
@@ -152,7 +152,7 @@ const SignUpForm = () => {
                   />
                   <div
                     onClick={handleTogglePassword}
-                    className='absolute cursor-pointer right-2.5 top-1/2 -translate-y-1/2'>
+                    className='absolute cursor-pointer right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground'>
                     {showPassword ? <IoEye /> : <IoEyeOff />}
                   </div>
                 </div>
@@ -169,7 +169,7 @@ const SignUpForm = () => {
               <Field data-invalid={fieldState.invalid}>
                 <FieldLabel htmlFor='form-rhf-input-confirmPassword'>Confirm Password</FieldLabel>
                 <div className='relative'>
-                  <FaCheckDouble className='absolute top-1/2 -translate-y-1/2 left-2.5' />
+                  <FaCheckDouble className='absolute top-1/2 -translate-y-1/2 left-2.5 text-muted-foreground' />
                   <Input
                     {...field}
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -181,7 +181,7 @@ const SignUpForm = () => {
                   />
                   <div
                     onClick={handleToggleConfirmPassword}
-                    className='absolute cursor-pointer right-2.5 top-1/2 -translate-y-1/2'>
+                    className='absolute cursor-pointer right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground'>
                     {showConfirmPassword ? <IoEye /> : <IoEyeOff />}
                   </div>
                 </div>
