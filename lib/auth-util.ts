@@ -9,14 +9,14 @@ export const getSession = async () => {
   })
 }
 
-export const requireSession = async () => {
+export const requireAuth = async () => {
   const session = await getSession()
   if (!session) redirect('/sign-in')
   return session
 }
 
 export const requireAdmin = async () => {
-  const session = await requireSession()
+  const session = await requireAuth()
   if (session.user.role !== 'admin') redirect('/dashboard')
   return session
 }

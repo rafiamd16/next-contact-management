@@ -1,4 +1,3 @@
-// src/lib/prisma.ts
 import { PrismaNeon } from '@prisma/adapter-neon'
 import { PrismaClient } from '../generated/prisma/client'
 

@@ -1,4 +1,4 @@
-import { requireSession } from '@/lib/auth-util'
+import { requireAuth } from '@/lib/auth-util'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 }
 
 const DashboardPage = async () => {
-  const { user } = await requireSession()
+  const { user } = await requireAuth()
 
   return (
     <div>

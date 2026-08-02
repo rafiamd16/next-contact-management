@@ -2,7 +2,7 @@
 
 import { requireSession } from '@/lib/auth-util'
 import { prisma } from '@/lib/prisma'
-import type { UserDashboardStats } from '@/types/dashboard'
+import type { UserDashboardStats } from '@/types/dashboard-type'
 
 export const getUserDashboardStats = async (): Promise<UserDashboardStats> => {
   const session = await requireSession()

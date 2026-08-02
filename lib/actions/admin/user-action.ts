@@ -4,6 +4,7 @@ import type { Prisma } from '@/generated/prisma/client'
 import { requireAdmin } from '@/lib/auth-util'
 import { prisma } from '@/lib/prisma'
 import { listUsersSchema, type ListUsersInput } from '@/lib/validations/user-validation'
+import type { Pagination } from '@/types/pagination'
 
 const userListSelect = {
   id: true,
@@ -16,18 +17,10 @@ const userListSelect = {
   banReason: true,
   banExpires: true,
   createdAt: true,
+  updatedAt: true,
 } satisfies Prisma.UserSelect
 
 type SafeUser = Prisma.UserGetPayload<{ select: typeof userListSelect }>
-
-interface Pagination {
-  page: number
-  limit: number
-  total: number
-  totalPages: number
-  hasNextPage: boolean
-  hasPrevPage: boolean
-}
 
 type ListUsersResult =
   | { success: true; data: { users: SafeUser[]; pagination: Pagination } }
@@ -42,18 +35,32 @@ export const listUserAction = async (input: ListUsersInput): Promise<ListUsersRe
     return { success: false, error: parsed.error.issues[0].message }
   }
 
-  const { page, limit, searchValue, sortBy, sortDirection } = parsed.data
+  const { page, limit, query, sortBy, sortDirection, role } = parsed.data
   const offset = (page - 1) * limit
 
   try {
-    const where: Prisma.UserWhereInput = searchValue
-      ? {
-          OR: [
-            { name: { contains: searchValue, mode: 'insensitive' } },
-            { email: { contains: searchValue, mode: 'insensitive' } },
-          ],
-        }
-      : {}
+    const where: Prisma.UserWhereInput = {
+      ...(query && {
+        OR: [
+          {
+            name: {
+              contains: query,
+              mode: 'insensitive',
+            },
+          },
+          {
+            email: {
+              contains: query,
+              mode: 'insensitive',
+            },
+          },
+        ],
+      }),
+
+      ...(role !== 'all' && {
+        role,
+      }),
+    }
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
