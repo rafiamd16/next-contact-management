@@ -3,7 +3,11 @@ import z from 'zod'
 export const listContactsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
-  query: z.string().trim().optional(),
+  query: z
+    .string()
+    .trim()
+    .transform((v) => (v === '' ? undefined : v))
+    .optional(),
   sortBy: z.enum(['firstName', 'createdAt', 'updatedAt']).default('createdAt'),
   sortDirection: z.enum(['asc', 'desc']).default('desc'),
   filter: z.enum(['all', 'my_contacts']).default('all'),

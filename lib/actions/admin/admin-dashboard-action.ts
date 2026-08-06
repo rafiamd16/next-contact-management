@@ -2,7 +2,7 @@
 
 import { requireAdmin } from '@/lib/auth-util'
 import { prisma } from '@/lib/prisma'
-import type { AdminDashboardStats } from '@/types/dashboard-type'
+import type { AdminDashboardStats } from '@/types/dashboard'
 
 export const getAdminDashboardStats = async (): Promise<AdminDashboardStats> => {
   await requireAdmin()

@@ -1,166 +1,208 @@
 'use server'
 
+import type { Contact, Prisma } from '@/generated/prisma/client'
 import { requireAuth } from '@/lib/auth-util'
+import { findContactById, findOwnedContactById } from '@/lib/helpers/contact-helper'
 import { prisma } from '@/lib/prisma'
+import { contactWithUserInclude, type ContactWithUser } from '@/lib/selects/contact-select'
 import {
-  ContactInputSchema,
-  ListContactsInput,
-  UpdateContactInputSchema,
   contactIdSchema,
   contactSchema,
   listContactsSchema,
   updateContactSchema,
+  type ContactInputSchema,
+  type ListContactsInput,
+  type UpdateContactInputSchema,
 } from '@/lib/validations/contact-validation'
-import { PaginatedResult } from '@/types/pagination-type'
-import { Prisma } from '../../generated/prisma/client'
-import { checkIsAdmin, verifyContactOwnership } from './helpers'
+import type { ActionResponse } from '@/types/action-response'
+import type { PaginatedResult } from '@/types/pagination'
+import { revalidatePath } from 'next/cache'
 
-type ContactListItem = Prisma.ContactGetPayload<{
-  include: {
-    user: { select: { id: true; name: true; email: true } }
-    _count: { select: { addresses: true } }
+const USER_CONTACTS_PATH = '/dashboard/contacts'
+const ADMIN_CONTACTS_PATH = '/admin/contacts'
+
+const revalidateContactPaths = (contactId?: string) => {
+  revalidatePath(USER_CONTACTS_PATH)
+  revalidatePath(ADMIN_CONTACTS_PATH)
+  if (contactId) {
+    revalidatePath(`${USER_CONTACTS_PATH}/${contactId}`)
+    revalidatePath(`${ADMIN_CONTACTS_PATH}/${contactId}`)
   }
-}>
-
-type ContactDetail = Prisma.ContactGetPayload<{
-  include: {
-    user: { select: { id: true; name: true; email: true } }
-    addresses: true
-  }
-}>
-
-type ContactWithAddresses = Prisma.ContactGetPayload<{
-  include: { addresses: true }
-}>
-
-const buildContactWhere = (
-  userId: string,
-  isAdminUser: boolean,
-  input: ListContactsInput,
-): Prisma.ContactWhereInput => {
-  const where: Prisma.ContactWhereInput = {}
-
-  if (!isAdminUser || input.filter === 'my_contacts') {
-    where.userId = userId
-  }
-
-  if (input.query) {
-    where.OR = [
-      { firstName: { contains: input.query, mode: 'insensitive' } },
-      { lastName: { contains: input.query, mode: 'insensitive' } },
-      { email: { contains: input.query, mode: 'insensitive' } },
-      { phone: { contains: input.query, mode: 'insensitive' } },
-    ]
-  }
-
-  return where
 }
 
 export const getContacts = async (
-  input: ListContactsInput,
-): Promise<PaginatedResult<ContactListItem>> => {
+  params: ListContactsInput,
+): Promise<ActionResponse<PaginatedResult<ContactWithUser>>> => {
   const session = await requireAuth()
-  const isAdminUser = checkIsAdmin(session.user.role)
-  const validated = listContactsSchema.parse(input)
-  const where = buildContactWhere(session.user.id, isAdminUser, validated)
 
-  const [data, total] = await Promise.all([
-    prisma.contact.findMany({
-      where,
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        _count: { select: { addresses: true } },
-      },
-      orderBy: { [validated.sortBy]: validated.sortDirection },
-      skip: (validated.page - 1) * validated.limit,
-      take: validated.limit,
+  const parsed = listContactsSchema.safeParse(params)
+  if (!parsed.success)
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+
+  const { page, limit, query, sortBy, sortDirection, filter } = parsed.data
+  const isAdmin = session.user.role === 'admin'
+
+  const where: Prisma.ContactWhereInput = {
+    ...(query && {
+      OR: [
+        { firstName: { contains: query, mode: 'insensitive' } },
+        { lastName: { contains: query, mode: 'insensitive' } },
+        { email: { contains: query, mode: 'insensitive' } },
+        { phone: { contains: query, mode: 'insensitive' } },
+      ],
     }),
-    prisma.contact.count({ where }),
-  ])
+    ...(isAdmin && filter === 'all' ? {} : { userId: session.user.id }),
+  }
 
-  return {
-    data,
-    pagination: {
-      page: validated.page,
-      limit: validated.limit,
-      total,
-      totalPages: Math.ceil(total / validated.limit),
-    },
+  try {
+    const [contacts, total] = await Promise.all([
+      prisma.contact.findMany({
+        where,
+        include: contactWithUserInclude,
+        orderBy: { [sortBy]: sortDirection },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.contact.count({ where }),
+    ])
+    return {
+      success: true,
+      data: {
+        data: contacts,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.max(1, Math.ceil(total / limit)),
+        },
+      },
+    }
+  } catch (error) {
+    console.error('getContacts error:', error)
+    return { success: false, error: 'Gagal mengambil data contact' }
   }
 }
 
-export const getContactById = async (contactId: string): Promise<ContactDetail> => {
+export const getContactById = async (
+  contactId: string,
+): Promise<ActionResponse<ContactWithUser>> => {
   const session = await requireAuth()
-  const isAdminUser = checkIsAdmin(session.user.role)
-  const validatedId = contactIdSchema.parse(contactId)
 
-  const contact = await prisma.contact.findUnique({
-    where: { id: validatedId },
-    include: {
-      user: { select: { id: true, name: true, email: true } },
-      addresses: true,
-    },
-  })
+  const parsedId = contactIdSchema.safeParse(contactId)
+  if (!parsedId.success)
+    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Contact id tidak valid' }
 
-  if (!contact) {
-    throw new Error('Contact not found')
+  const isAdmin = session.user.role === 'admin'
+
+  try {
+    const contact = isAdmin
+      ? await findContactById(parsedId.data)
+      : await findOwnedContactById(parsedId.data, session.user.id)
+
+    if (!contact) return { success: false, error: 'Contact tidak ditemukan' }
+
+    if (!isAdmin && contact.userId !== session.user.id) {
+      return { success: false, error: 'Contact tidak ditemukan' }
+    }
+
+    return { success: true, data: contact }
+  } catch (error) {
+    console.error('getContactById error:', error)
+    return { success: false, error: 'Gagal mengambil data contact' }
   }
-
-  if (!isAdminUser && contact.userId !== session.user.id) {
-    throw new Error('Contact not found')
-  }
-
-  return contact
 }
 
-export const createContact = async (input: ContactInputSchema): Promise<ContactWithAddresses> => {
+export const createContact = async (
+  input: ContactInputSchema,
+): Promise<ActionResponse<Contact>> => {
   const session = await requireAuth()
-  const validated = contactSchema.parse(input)
 
-  return prisma.contact.create({
-    data: {
-      ...validated,
-      userId: session.user.id,
-    },
-    include: { addresses: true },
-  })
+  const parsed = contactSchema.safeParse(input)
+  if (!parsed.success)
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+
+  try {
+    const contact = await prisma.contact.create({
+      data: {
+        ...parsed.data,
+        userId: session.user.id,
+      },
+    })
+
+    revalidateContactPaths()
+
+    return { success: true, data: contact }
+  } catch (error) {
+    console.error('createContact error:', error)
+    return { success: false, error: 'Gagal membuat contact' }
+  }
 }
 
 export const updateContact = async (
   contactId: string,
   input: UpdateContactInputSchema,
-): Promise<ContactWithAddresses> => {
+): Promise<ActionResponse<Contact>> => {
   const session = await requireAuth()
-  const validatedId = contactIdSchema.parse(contactId)
-  const validatedData = updateContactSchema.parse(input)
 
-  await verifyContactOwnership(validatedId, session.user.id)
+  const parsedId = contactIdSchema.safeParse(contactId)
+  if (!parsedId.success)
+    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Contact id tidak valid' }
 
-  return prisma.contact.update({
-    where: { id: validatedId },
-    data: validatedData,
-    include: { addresses: true },
-  })
+  const parsed = updateContactSchema.safeParse(input)
+  if (!parsed.success)
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+
+  try {
+    const existingContact = await findOwnedContactById(parsedId.data, session.user.id)
+    if (!existingContact) return { success: false, error: 'Contact tidak ditemukan' }
+
+    const contact = await prisma.contact.update({
+      where: { id: parsedId.data },
+      data: parsed.data,
+    })
+
+    revalidateContactPaths(contactId)
+
+    return { success: true, data: contact }
+  } catch (error) {
+    console.error('updateContact error:', error)
+    return { success: false, error: 'Gagal mengubah contact' }
+  }
 }
 
-export const deleteContact = async (contactId: string): Promise<{ id: string }> => {
+export const deleteContact = async (contactId: string): Promise<ActionResponse> => {
   const session = await requireAuth()
-  const validatedId = contactIdSchema.parse(contactId)
 
-  await verifyContactOwnership(validatedId, session.user.id)
+  const parsedId = contactIdSchema.safeParse(contactId)
+  if (!parsedId.success)
+    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Contact id tidak valid' }
 
-  return prisma.contact.delete({
-    where: { id: validatedId },
-    select: { id: true },
-  })
+  try {
+    const existingContact = await findOwnedContactById(parsedId.data, session.user.id)
+    if (!existingContact) return { success: false, error: 'Contact tidak ditemukan' }
+
+    await prisma.contact.delete({ where: { id: parsedId.data } })
+
+    revalidateContactPaths(contactId)
+
+    return { success: true, data: null }
+  } catch (error) {
+    console.error('deleteContact error:', error)
+    return { success: false, error: 'Gagal menghapus contact' }
+  }
 }
 
-export const deleteAllContact = async (): Promise<{ count: number }> => {
+export const deleteAllContact = async (): Promise<ActionResponse> => {
   const session = await requireAuth()
 
-  const result = await prisma.contact.deleteMany({
-    where: { userId: session.user.id },
-  })
+  try {
+    await prisma.contact.deleteMany({ where: { userId: session.user.id } })
 
-  return { count: result.count }
+    revalidateContactPaths()
+
+    return { success: true, data: null }
+  } catch (error) {
+    console.error('deleteAllContact error:', error)
+    return { success: false, error: 'Gagal menghapus semua contact' }
+  }
 }

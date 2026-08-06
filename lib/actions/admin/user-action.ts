@@ -3,94 +3,58 @@
 import type { Prisma } from '@/generated/prisma/client'
 import { requireAdmin } from '@/lib/auth-util'
 import { prisma } from '@/lib/prisma'
+import { userListSelect, type UserListItem } from '@/lib/selects/user-select'
 import { listUsersSchema, type ListUsersInput } from '@/lib/validations/user-validation'
-import type { Pagination } from '@/types/pagination'
+import type { ActionResponse } from '@/types/action-response'
+import type { PaginatedResult } from '@/types/pagination'
 
-const userListSelect = {
-  id: true,
-  name: true,
-  email: true,
-  emailVerified: true,
-  image: true,
-  role: true,
-  banned: true,
-  banReason: true,
-  banExpires: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.UserSelect
-
-type SafeUser = Prisma.UserGetPayload<{ select: typeof userListSelect }>
-
-type ListUsersResult =
-  | { success: true; data: { users: SafeUser[]; pagination: Pagination } }
-  | { success: false; error: string }
-
-export const listUserAction = async (input: ListUsersInput): Promise<ListUsersResult> => {
+export const getUsers = async (
+  params: ListUsersInput,
+): Promise<ActionResponse<PaginatedResult<UserListItem>>> => {
   await requireAdmin()
 
-  const parsed = listUsersSchema.safeParse(input)
-
+  const parsed = listUsersSchema.safeParse(params)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0].message }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
   }
 
   const { page, limit, query, sortBy, sortDirection, role } = parsed.data
-  const offset = (page - 1) * limit
+  const where: Prisma.UserWhereInput = {
+    ...(query && {
+      OR: [
+        { name: { contains: query, mode: 'insensitive' } },
+        { email: { contains: query, mode: 'insensitive' } },
+      ],
+    }),
+    ...(role !== 'all' && { role }),
+  }
 
   try {
-    const where: Prisma.UserWhereInput = {
-      ...(query && {
-        OR: [
-          {
-            name: {
-              contains: query,
-              mode: 'insensitive',
-            },
-          },
-          {
-            email: {
-              contains: query,
-              mode: 'insensitive',
-            },
-          },
-        ],
-      }),
-
-      ...(role !== 'all' && {
-        role,
-      }),
-    }
-
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
         select: userListSelect,
-        skip: offset,
-        take: limit,
         orderBy: { [sortBy]: sortDirection },
+        skip: (page - 1) * limit,
+        take: limit,
       }),
       prisma.user.count({ where }),
     ])
 
-    const totalPages = Math.max(1, Math.ceil(total / limit))
-
     return {
       success: true,
       data: {
-        users,
+        data: users,
         pagination: {
           page,
           limit,
           total,
-          totalPages,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1,
+          totalPages: Math.max(1, Math.ceil(total / limit)),
         },
       },
     }
   } catch (error) {
-    console.error('[listUsersAction]', error)
+    console.error('GetUsers error', error)
     return { success: false, error: 'Gagal mengambil data user' }
   }
 }
