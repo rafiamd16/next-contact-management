@@ -156,6 +156,7 @@ const SignInForm = () => {
       <div
         className={`grid grid-cols-2 gap-4 ${isPending || isPendingGoogle || isPendingGithub ? 'pointer-events-none' : ''} `}>
         <Button
+          size={'lg'}
           onClick={() => handleOAuth('google')}
           disabled={isPending || isPendingGoogle || isPendingGithub}
           className={`${isPending || isPendingGoogle || isPendingGithub ? 'pointer-events-none' : ''}`}>
@@ -163,6 +164,7 @@ const SignInForm = () => {
           {isPendingGoogle ? 'Signing in...' : 'Google'}
         </Button>
         <Button
+          size={'lg'}
           onClick={() => handleOAuth('github')}
           disabled={isPending || isPendingGoogle || isPendingGithub}
           className={`${isPendingGithub ? 'pointer-events-none' : ''}`}>
@@ -173,7 +175,7 @@ const SignInForm = () => {
 
       <p className='text-center text-sm text-muted-foreground'>
         Don&apos;t have an account?{' '}
-        <Link href='/sign-up' className='underline underline-offset-4 font-bold transition-all'>
+        <Link href='/sign-up' className='underline hover:text-primary font-bold transition-colors'>
           Sign up
         </Link>
       </p>

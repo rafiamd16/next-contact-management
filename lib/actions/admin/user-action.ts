@@ -15,10 +15,11 @@ export const getUsers = async (
 
   const parsed = listUsersSchema.safeParse(params)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' }
   }
 
   const { page, limit, query, sortBy, sortDirection, role } = parsed.data
+
   const where: Prisma.UserWhereInput = {
     ...(query && {
       OR: [
@@ -55,6 +56,6 @@ export const getUsers = async (
     }
   } catch (error) {
     console.error('GetUsers error', error)
-    return { success: false, error: 'Gagal mengambil data user' }
+    return { success: false, error: 'Failed to get users' }
   }
 }

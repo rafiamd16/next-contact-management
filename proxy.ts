@@ -2,7 +2,7 @@ import { getSessionCookie } from 'better-auth/cookies'
 import { NextRequest, NextResponse } from 'next/server'
 
 const authRoutes = ['/sign-in', '/sign-up']
-const protectedRoutes = ['/dashboard']
+const protectedRoutes = ['/dashboard', '/admin']
 
 export async function proxy(request: NextRequest) {
   const sessionCookie = getSessionCookie(request)
@@ -24,5 +24,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/sign-in', '/sign-up'],
+  matcher: ['/dashboard/:path*', '/admin/:path*', '/sign-in', '/sign-up'],
 }

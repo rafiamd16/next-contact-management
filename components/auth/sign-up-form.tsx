@@ -214,6 +214,7 @@ const SignUpForm = () => {
       <div
         className={`grid grid-cols-2 gap-4 ${isPending || isPendingGoogle || isPendingGithub ? 'pointer-events-none' : ''}`}>
         <Button
+          size={'lg'}
           onClick={() => handleOAuth('google')}
           disabled={isPending || isPendingGoogle || isPendingGithub}
           className={`${isPending || isPendingGoogle || isPendingGithub ? 'pointer-events-none' : ''}`}>
@@ -221,6 +222,7 @@ const SignUpForm = () => {
           {isPendingGoogle ? 'Signing in...' : 'Google'}
         </Button>
         <Button
+          size={'lg'}
           onClick={() => handleOAuth('github')}
           disabled={isPending || isPendingGoogle || isPendingGithub}
           className={`${isPending || isPendingGoogle || isPendingGithub ? 'pointer-events-none' : ''}`}>

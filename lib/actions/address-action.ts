@@ -31,7 +31,7 @@ export const getAddresses = async (contactId: string): Promise<ActionResponse<Ad
   if (!parsedId.success) {
     return {
       success: false,
-      error: parsedId.error.issues[0]?.message ?? 'Contact id tidak valid',
+      error: parsedId.error.issues[0]?.message ?? 'Invalid contact id',
     }
   }
 
@@ -43,7 +43,7 @@ export const getAddresses = async (contactId: string): Promise<ActionResponse<Ad
       : await findOwnedContactById(parsedId.data, session.user.id)
 
     if (!existingContact) {
-      return { success: false, error: 'Contact tidak ditemukan' }
+      return { success: false, error: 'Contact not found' }
     }
 
     const addresses = await prisma.address.findMany({
@@ -54,7 +54,7 @@ export const getAddresses = async (contactId: string): Promise<ActionResponse<Ad
     return { success: true, data: addresses }
   } catch (error) {
     console.error('getAddresses error:', error)
-    return { success: false, error: 'Gagal mengambil data address' }
+    return { success: false, error: 'Failed to get addresses' }
   }
 }
 
@@ -63,7 +63,7 @@ export const getAddressById = async (addressId: string): Promise<ActionResponse<
 
   const parsedId = addressIdSchema.safeParse(addressId)
   if (!parsedId.success) {
-    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Address id tidak valid' }
+    return { success: false, error: parsedId.error.issues[0]?.message ?? 'invalid address id' }
   }
 
   const isAdmin = session.user.role === 'admin'
@@ -74,13 +74,13 @@ export const getAddressById = async (addressId: string): Promise<ActionResponse<
       : await findOwnedAddressById(parsedId.data, session.user.id)
 
     if (!address) {
-      return { success: false, error: 'Address tidak ditemukan' }
+      return { success: false, error: 'Address not found' }
     }
 
     return { success: true, data: address }
   } catch (error) {
     console.error('getAddressById error:', error)
-    return { success: false, error: 'Gagal mengambil data address' }
+    return { success: false, error: 'Failed to get address' }
   }
 }
 
@@ -94,19 +94,19 @@ export const createAddress = async (
   if (!parsedId.success) {
     return {
       success: false,
-      error: parsedId.error.issues[0]?.message ?? 'Contact id tidak valid',
+      error: parsedId.error.issues[0]?.message ?? 'Invalid contact id',
     }
   }
 
   const parsed = addressSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' }
   }
 
   try {
     const existingContact = await findOwnedContactById(parsedId.data, session.user.id)
     if (!existingContact) {
-      return { success: false, error: 'Contact tidak ditemukan' }
+      return { success: false, error: 'Contact tnot found' }
     }
 
     const address = await prisma.address.create({
@@ -121,7 +121,7 @@ export const createAddress = async (
     return { success: true, data: address }
   } catch (error) {
     console.error('createAddress error:', error)
-    return { success: false, error: 'Gagal membuat address' }
+    return { success: false, error: 'Failed to create address' }
   }
 }
 
@@ -133,18 +133,18 @@ export const updateAddress = async (
 
   const parsedId = addressIdSchema.safeParse(addressId)
   if (!parsedId.success) {
-    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Address id tidak valid' }
+    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Invalid address id' }
   }
 
   const parsed = updateAddressSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' }
   }
 
   try {
     const existingAddress = await findOwnedAddressById(parsedId.data, session.user.id)
     if (!existingAddress) {
-      return { success: false, error: 'Address tidak ditemukan' }
+      return { success: false, error: 'Address not found' }
     }
 
     const address = await prisma.address.update({
@@ -157,7 +157,7 @@ export const updateAddress = async (
     return { success: true, data: address }
   } catch (error) {
     console.error('updateAddress error:', error)
-    return { success: false, error: 'Gagal mengupdate address' }
+    return { success: false, error: 'Failed to update address' }
   }
 }
 
@@ -166,13 +166,13 @@ export const deleteAddress = async (addressId: string): Promise<ActionResponse> 
 
   const parsedId = addressIdSchema.safeParse(addressId)
   if (!parsedId.success) {
-    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Address id tidak valid' }
+    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Invalid address id' }
   }
 
   try {
     const existingAddress = await findOwnedAddressById(parsedId.data, session.user.id)
     if (!existingAddress) {
-      return { success: false, error: 'Address tidak ditemukan' }
+      return { success: false, error: 'Address not found' }
     }
 
     await prisma.address.delete({ where: { id: parsedId.data } })
@@ -182,7 +182,7 @@ export const deleteAddress = async (addressId: string): Promise<ActionResponse> 
     return { success: true, data: null }
   } catch (error) {
     console.error('deleteAddress error:', error)
-    return { success: false, error: 'Gagal menghapus address' }
+    return { success: false, error: 'Failed to delete address' }
   }
 }
 
@@ -193,14 +193,14 @@ export const deleteAllAddress = async (contactId: string): Promise<ActionRespons
   if (!parsedId.success) {
     return {
       success: false,
-      error: parsedId.error.issues[0]?.message ?? 'Contact id tidak valid',
+      error: parsedId.error.issues[0]?.message ?? 'Invalid contact id',
     }
   }
 
   try {
     const existingContact = await findOwnedContactById(parsedId.data, session.user.id)
     if (!existingContact) {
-      return { success: false, error: 'Contact tidak ditemukan' }
+      return { success: false, error: 'Contact not found' }
     }
 
     await prisma.address.deleteMany({ where: { contactId: parsedId.data } })
@@ -210,6 +210,6 @@ export const deleteAllAddress = async (contactId: string): Promise<ActionRespons
     return { success: true, data: null }
   } catch (error) {
     console.error('deleteAllAddress error:', error)
-    return { success: false, error: 'Gagal menghapus semua address' }
+    return { success: false, error: 'Failed to delete all addresses' }
   }
 }

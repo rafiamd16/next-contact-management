@@ -1,5 +1,6 @@
 import { requireAuth } from '@/lib/auth-util'
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -7,6 +8,7 @@ export const metadata: Metadata = {
 
 const DashboardPage = async () => {
   const { user } = await requireAuth()
+  if (user.role === 'admin') redirect('/admin')
 
   return (
     <div>

@@ -37,7 +37,7 @@ export const getContacts = async (
 
   const parsed = listContactsSchema.safeParse(params)
   if (!parsed.success)
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const { page, limit, query, sortBy, sortDirection, filter } = parsed.data
   const isAdmin = session.user.role === 'admin'
@@ -79,7 +79,7 @@ export const getContacts = async (
     }
   } catch (error) {
     console.error('getContacts error:', error)
-    return { success: false, error: 'Gagal mengambil data contact' }
+    return { success: false, error: 'Failed to get contacts' }
   }
 }
 
@@ -90,7 +90,7 @@ export const getContactById = async (
 
   const parsedId = contactIdSchema.safeParse(contactId)
   if (!parsedId.success)
-    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Contact id tidak valid' }
+    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Invalid contact id' }
 
   const isAdmin = session.user.role === 'admin'
 
@@ -99,16 +99,12 @@ export const getContactById = async (
       ? await findContactById(parsedId.data)
       : await findOwnedContactById(parsedId.data, session.user.id)
 
-    if (!contact) return { success: false, error: 'Contact tidak ditemukan' }
-
-    if (!isAdmin && contact.userId !== session.user.id) {
-      return { success: false, error: 'Contact tidak ditemukan' }
-    }
+    if (!contact) return { success: false, error: 'Contact not found' }
 
     return { success: true, data: contact }
   } catch (error) {
     console.error('getContactById error:', error)
-    return { success: false, error: 'Gagal mengambil data contact' }
+    return { success: false, error: 'Failed to get contact' }
   }
 }
 
@@ -119,7 +115,7 @@ export const createContact = async (
 
   const parsed = contactSchema.safeParse(input)
   if (!parsed.success)
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   try {
     const contact = await prisma.contact.create({
@@ -134,7 +130,7 @@ export const createContact = async (
     return { success: true, data: contact }
   } catch (error) {
     console.error('createContact error:', error)
-    return { success: false, error: 'Gagal membuat contact' }
+    return { success: false, error: 'Failed to create contact' }
   }
 }
 
@@ -146,15 +142,15 @@ export const updateContact = async (
 
   const parsedId = contactIdSchema.safeParse(contactId)
   if (!parsedId.success)
-    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Contact id tidak valid' }
+    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Invalid contact id' }
 
   const parsed = updateContactSchema.safeParse(input)
   if (!parsed.success)
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   try {
     const existingContact = await findOwnedContactById(parsedId.data, session.user.id)
-    if (!existingContact) return { success: false, error: 'Contact tidak ditemukan' }
+    if (!existingContact) return { success: false, error: 'Contact not found' }
 
     const contact = await prisma.contact.update({
       where: { id: parsedId.data },
@@ -166,7 +162,7 @@ export const updateContact = async (
     return { success: true, data: contact }
   } catch (error) {
     console.error('updateContact error:', error)
-    return { success: false, error: 'Gagal mengubah contact' }
+    return { success: false, error: 'Failed to update contact' }
   }
 }
 
@@ -175,11 +171,11 @@ export const deleteContact = async (contactId: string): Promise<ActionResponse> 
 
   const parsedId = contactIdSchema.safeParse(contactId)
   if (!parsedId.success)
-    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Contact id tidak valid' }
+    return { success: false, error: parsedId.error.issues[0]?.message ?? 'Invalid contact id' }
 
   try {
     const existingContact = await findOwnedContactById(parsedId.data, session.user.id)
-    if (!existingContact) return { success: false, error: 'Contact tidak ditemukan' }
+    if (!existingContact) return { success: false, error: 'Contact not found' }
 
     await prisma.contact.delete({ where: { id: parsedId.data } })
 
@@ -188,7 +184,7 @@ export const deleteContact = async (contactId: string): Promise<ActionResponse> 
     return { success: true, data: null }
   } catch (error) {
     console.error('deleteContact error:', error)
-    return { success: false, error: 'Gagal menghapus contact' }
+    return { success: false, error: 'Failed to delete contact' }
   }
 }
 
@@ -203,6 +199,6 @@ export const deleteAllContact = async (): Promise<ActionResponse> => {
     return { success: true, data: null }
   } catch (error) {
     console.error('deleteAllContact error:', error)
-    return { success: false, error: 'Gagal menghapus semua contact' }
+    return { success: false, error: 'Failed to delete all contacts' }
   }
 }
